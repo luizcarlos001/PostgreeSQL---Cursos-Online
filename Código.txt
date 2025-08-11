@@ -1,0 +1,260 @@
+-- #######################################################################################
+-- # Script de Criação e População do Banco de Dados: 'plataforma_cursos'                #
+-- # SGBD: PostgreSQL                                                                    #
+-- # Data de Geração: 21 de julho de 2025                                                #
+-- #                                                                                     #
+-- # Pré-requisito: O banco de dados 'plataforma_cursos' deve ser criado antes da        #
+-- #                execução deste script no PgAdmin4.                                   #
+-- #######################################################################################
+
+
+-- ETAPA 1: CRIAÇÃO DAS TABELAS
+-----------------------------------------------------------------------------------------
+
+-- Tabela Pessoa: Base para alunos e professores.
+CREATE TABLE Pessoa (
+    id_pessoa SERIAL PRIMARY KEY,
+    nome VARCHAR(100) NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL, -- Garante e-mail único por pessoa
+    telefone VARCHAR(20),
+    endereco VARCHAR(255),
+    tipo_pessoa VARCHAR(20) NOT NULL CHECK (tipo_pessoa IN ('Aluno', 'Professor'))
+);
+
+-- Tabela Aluno: Informações específicas de alunos.
+-- id_aluno: PK e FK para Pessoa, implementando herança de tabela.
+CREATE TABLE Aluno (
+    id_aluno INT PRIMARY KEY REFERENCES Pessoa(id_pessoa)
+    data_nascimento DATE,
+    escolaridade VARCHAR(50)
+);
+
+-- Tabela Professor: Informações específicas de professores.
+-- id_professor: PK e FK para Pessoa.
+CREATE TABLE Professor (
+    id_professor INT PRIMARY KEY REFERENCES Pessoa(id_pessoa),
+    especialidade VARCHAR(100),
+    curriculo TEXT
+);
+
+-- Tabela Curso: Detalhes dos cursos oferecidos.
+-- data_criacao: Preenchido automaticamente com a data atual.
+-- status_curso: Restrição para valores válidos.
+-- id_professor: FK para o professor responsável.
+CREATE TABLE Curso (
+    id_curso SERIAL PRIMARY KEY,
+    titulo VARCHAR(255) NOT NULL,
+    descricao TEXT,
+    carga_horaria INT NOT NULL,
+    valor NUMERIC(10, 2) NOT NULL,
+    data_criacao DATE DEFAULT CURRENT_DATE,
+    status_curso VARCHAR(20) NOT NULL CHECK (status_curso IN ('Ativo', 'Inativo', 'Em Desenvolvimento')),
+    id_professor INT NOT NULL REFERENCES Professor(id_professor)
+);
+
+-- Tabela Modulo: Divisão de um curso em unidades temáticas.
+-- id_curso: FK para o curso pai.
+CREATE TABLE Modulo (
+    id_modulo SERIAL PRIMARY KEY,
+    titulo_modulo VARCHAR(255) NOT NULL,
+    descricao_modulo TEXT,
+    id_curso INT NOT NULL REFERENCES Curso(id_curso)
+);
+
+-- Tabela Aula: Unidade de conteúdo dentro de um módulo.
+-- id_modulo: FK para o módulo.
+CREATE TABLE Aula (
+    id_aula SERIAL PRIMARY KEY,
+    titulo_aula VARCHAR(255) NOT NULL,
+    link_video VARCHAR(255),
+    duracao_minutos INT,
+    id_modulo INT NOT NULL REFERENCES Modulo(id_modulo)
+);
+
+-- Tabela FormaPagamento: Opções de pagamento disponíveis.
+-- nome_forma: Único para cada forma de pagamento.
+CREATE TABLE FormaPagamento (
+    id_forma_pagamento SERIAL PRIMARY KEY,
+    nome_forma VARCHAR(50) UNIQUE NOT NULL
+);
+
+-- Tabela Inscricao: Registro da matrícula de um aluno em um curso (resolve N:N).
+-- status_inscricao: Restrição para valores válidos.
+-- data_conclusao, nota_final: Podem ser nulos.
+-- id_forma_pagamento: FK para a forma de pagamento.
+CREATE TABLE Inscricao (
+    id_inscricao SERIAL PRIMARY KEY,
+    id_aluno INT NOT NULL REFERENCES Aluno(id_aluno),
+    id_curso INT NOT NULL REFERENCES Curso(id_curso),
+    data_inscricao DATE DEFAULT CURRENT_DATE,
+    status_inscricao VARCHAR(20) NOT NULL CHECK (status_inscricao IN ('Pendente', 'Concluída', 'Cancelada')),
+    data_conclusao DATE,
+    nota_final NUMERIC(4, 2),
+    id_forma_pagamento INT NOT NULL REFERENCES FormaPagamento(id_forma_pagamento)
+);
+
+-- Tabela Certificado: Registra os certificados emitidos.
+-- codigo_verificacao: Único e serve para validação.
+CREATE TABLE Certificado (
+    id_certificado SERIAL PRIMARY KEY,
+    id_aluno INT NOT NULL REFERENCES Aluno(id_aluno),
+    id_curso INT NOT NULL REFERENCES Curso(id_curso),
+    data_emissao DATE DEFAULT CURRENT_DATE,
+    codigo_verificacao VARCHAR(50) UNIQUE NOT NULL
+);
+
+
+-- ETAPA 2: INSERÇÃO DE DADOS DE EXEMPLO
+-----------------------------------------------------------------------------------------
+
+INSERT INTO Pessoa (nome, email, telefone, endereco, tipo_pessoa) VALUES
+('Ana Silva', 'ana.silva@email.com', '11987654321', 'Rua A, 123', 'Aluno'),
+('Bruno Costa', 'bruno.costa@email.com', '21912345678', 'Av. B, 456', 'Aluno'),
+('Carlos Pereira', 'carlos.pereira@email.com', '31998765432', 'Trav. C, 789', 'Professor'),
+('Daniela Lima', 'daniela.lima@email.com', '41911223344', 'Rua D, 101', 'Professor'),
+('Gustavo Honorato', 'gustavo.honorato@gabarito.com', '27999999999', 'Rua do Gabarito, 1', 'Aluno');
+
+
+INSERT INTO Aluno (id_aluno, data_nascimento, escolaridade) VALUES
+(1, '2000-01-15', 'Ensino Superior Incompleto'),
+(2, '1998-05-20', 'Ensino Superior Completo'),
+(5, '1995-10-25', 'Pós-graduação');
+
+INSERT INTO Professor (id_professor, especialidade, curriculo) VALUES
+(3, 'Programação Web', 'Mestrado em Ciência da Computação.'),
+(4, 'Design Gráfico', 'Bacharel em Design, com experiência em agências.');
+
+INSERT INTO FormaPagamento (nome_forma) VALUES
+('Cartão de Crédito'),
+('Boleto Bancário'),
+('Pix');
+
+INSERT INTO Curso (titulo, descricao, carga_horaria, valor, id_professor, status_curso) VALUES
+('Desenvolvimento Web Completo', 'Aprenda do zero ao avançado em desenvolvimento web.', 80, 799.90, 3, 'Ativo'),
+('Design para Iniciantes', 'Primeiros passos no mundo do design gráfico.', 40, 399.90, 4, 'Ativo'),
+('Python para Data Science', 'Curso intensivo de Python aplicado a dados.', 60, 599.90, 3, 'Em Desenvolvimento'),
+('Edição de Vídeos com Premiere', 'Curso prático de edição de vídeos.', 30, 299.90, 4, 'Ativo');
+
+
+INSERT INTO Modulo (titulo_modulo, descricao_modulo, id_curso) VALUES
+('Introdução ao HTML e CSS', 'Módulo inicial sobre web.', 1),
+('JavaScript Essencial', 'Fundamentos de programação com JS.', 1),
+('Fundamentos do Design', 'Conceitos básicos.', 2),
+('Ferramentas de Design', 'Uso de softwares.', 2),
+('Instalação e Configuração', 'Preparando o ambiente Python.', 3);
+
+
+INSERT INTO Aula (titulo_aula, link_video, duracao_minutos, id_modulo) VALUES
+('Tags Básicas HTML', 'link_aula_html_1', 15, 1),
+('Estilizando com CSS', 'link_aula_css_1', 20, 1),
+('Variáveis e Tipos de Dados JS', 'link_aula_js_1', 25, 2),
+('Princípios da Composição', 'link_aula_design_1', 18, 3),
+('Introdução ao Photoshop', 'link_aula_photoshop_1', 30, 4);
+
+
+INSERT INTO Inscricao (id_aluno, id_curso, data_inscricao, status_inscricao, id_forma_pagamento) VALUES
+(1, 1, '2024-03-10', 'Concluída', 1),
+(2, 2, '2024-03-15', 'Concluída', 2),
+(1, 4, '2024-04-01', 'Pendente', 3), -- Inscrição usada para testar a trigger
+(5, 1, '2024-05-01', 'Concluída', 1),
+(5, 2, '2024-05-10', 'Concluída', 2);
+
+UPDATE Inscricao SET nota_final = 9.5, data_conclusao = '2024-05-01' WHERE id_aluno = 1 AND id_curso = 1;
+UPDATE Inscricao SET nota_final = 8.8, data_conclusao = '2024-05-15' WHERE id_aluno = 2 AND id_curso = 2;
+UPDATE Inscricao SET nota_final = 9.2, data_conclusao = '2024-07-01' WHERE id_aluno = 5 AND id_curso = 1;
+UPDATE Inscricao SET nota_final = 8.5, data_conclusao = '2024-07-10' WHERE id_aluno = 5 AND id_curso = 2;
+
+INSERT INTO Certificado (id_aluno, id_curso, data_emissao, codigo_verificacao) VALUES
+(1, 1, '2024-05-02', 'CERT-DEVWEB-A1-2024'),
+(2, 2, '2024-05-16', 'CERT-DESIGN-B2-2024'),
+(5, 1, '2024-07-02', 'CERT-DEVWEB-G5-2024'),
+(5, 2, '2024-07-11', 'CERT-DESIGN-G5-2024');
+
+
+-- ETAPA 3: FUNÇÕES
+-----------------------------------------------------------------------------------------
+
+-- Função: contar_aulas_por_curso
+-- Retorna o número total de aulas em um curso específico.
+CREATE OR REPLACE FUNCTION contar_aulas_por_curso(curso_id INT)
+RETURNS INT AS $$
+DECLARE
+    total_aulas INT;
+BEGIN
+    SELECT COUNT(A.id_aula) INTO total_aulas
+    FROM Aula A
+    JOIN Modulo M ON A.id_modulo = M.id_modulo
+    WHERE M.id_curso = curso_id;
+    RETURN total_aulas;
+END;
+$$ LANGUAGE plpgsql;
+
+
+-- ETAPA 4: TRIGGERS
+-----------------------------------------------------------------------------------------
+
+-- Função para a Trigger: gerar_certificado_inscricao
+-- Gera um certificado quando uma inscrição é concluída, evitando duplicidades.
+CREATE OR REPLACE FUNCTION gerar_certificado_inscricao()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.status_inscricao = 'Concluída' AND NEW.data_conclusao IS NOT NULL AND NEW.nota_final IS NOT NULL THEN
+        IF NOT EXISTS (SELECT 1 FROM Certificado WHERE id_aluno = NEW.id_aluno AND id_curso = NEW.id_curso) THEN
+            INSERT INTO Certificado (id_aluno, id_curso, data_emissao, codigo_verificacao)
+            VALUES (NEW.id_aluno, NEW.id_curso, NEW.data_conclusao,
+                    'CERT-' || NEW.id_aluno || '-' || NEW.id_curso || '-' || TO_CHAR(NEW.data_conclusao, 'YYYYMMDD'));
+        END IF;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger: trigger_gerar_certificado
+-- Dispara a função `gerar_certificado_inscricao` após um UPDATE na tabela `Inscricao`, para cada linha.
+CREATE TRIGGER trigger_gerar_certificado
+AFTER UPDATE ON Inscricao
+FOR EACH ROW
+EXECUTE FUNCTION gerar_certificado_inscricao();
+
+
+-- ETAPA 5: EXEMPLOS DE CONSULTAS SQL (Para teste)
+-----------------------------------------------------------------------------------------
+
+-- Consulta 1: Média de valor dos cursos ativos.
+-- SELECT AVG(valor) AS media_valor_cursos_ativos FROM Curso WHERE status_curso = 'Ativo';
+
+-- Consulta 2: Contagem de cursos por professor.
+-- SELECT P.nome AS nome_professor, COUNT(C.id_curso) AS total_cursos_ministrados
+-- FROM Professor PR JOIN Pessoa P ON PR.id_professor = P.id_pessoa LEFT JOIN Curso C ON PR.id_professor = C.id_professor
+-- GROUP BY P.nome ORDER BY total_cursos_ministrados DESC;
+
+-- Consulta 3: Cursos com mais de 1 inscrição.
+-- SELECT C.titulo AS titulo_curso, COUNT(I.id_inscricao) AS total_inscricoes
+-- FROM Curso C JOIN Inscricao I ON C.id_curso = I.id_curso
+-- GROUP BY C.titulo HAVING COUNT(I.id_inscricao) > 1;
+
+-- Consulta 4: Alunos com nota média acima de 8.0 em cursos concluídos.
+-- SELECT P.nome AS nome_aluno, AVG(I.nota_final) AS media_nota
+-- FROM Aluno A JOIN Pessoa P ON A.id_aluno = P.id_pessoa JOIN Inscricao I ON A.id_aluno = I.id_aluno
+-- WHERE I.status_inscricao = 'Concluída' AND I.nota_final IS NOT NULL
+-- GROUP BY P.nome HAVING AVG(I.nota_final) > 8.0;
+
+
+-- ETAPA 6: TESTE DA TRIGGER (Exemplo de verificação da automação)
+-----------------------------------------------------------------------------------------
+
+-- Opcional: Para re-executar o teste da trigger do zero, caso o certificado já exista:
+-- DELETE FROM Certificado WHERE id_aluno = 1 AND id_curso = 4;
+-- UPDATE Inscricao SET status_inscricao = 'Pendente', data_conclusao = NULL, nota_final = NULL WHERE id_inscricao = 3;
+
+-- 1. Consultar estado inicial da inscrição ID 3 (Ana no curso 4):
+-- SELECT id_inscricao, id_aluno, id_curso, status_inscricao, data_conclusao, nota_final FROM Inscricao WHERE id_inscricao = 3;
+
+-- 2. Verificar se existe certificado para Ana no curso 4 (não deve haver antes do update):
+-- SELECT * FROM Certificado WHERE id_aluno = 1 AND id_curso = 4;
+
+-- 3. Atualizar a inscrição para 'Concluída' (este comando dispara a trigger):
+-- UPDATE Inscricao SET status_inscricao = 'Concluída', data_conclusao = CURRENT_DATE, nota_final = 7.8 WHERE id_inscricao = 3;
+
+-- 4. Verificar novamente se o certificado foi gerado (agora deve aparecer):
+-- SELECT * FROM Certificado WHERE id_aluno = 1 AND id_curso = 4;
